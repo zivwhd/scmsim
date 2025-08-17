@@ -1,0 +1,15 @@
+paths:
+  results: ./results
+  products: ./products
+datasets:
+  ml-100k:
+    loader: MovieLens100KLoader
+    base_path: ml-100k
+  ml-1m:
+    loader: MovieLens1MLoader
+    base_path: ml-1m
+  MFSim0:
+    loader: CsvLoader
+    path: products/MFSim/samples.0.csv
+
+    
