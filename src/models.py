@@ -111,13 +111,13 @@ class MatrixFactorizationTrain:
 
     def __init__(
             self,
-            cfg,
+            paths,
             name,
             n_factors = 20,
             train_params=MFTrainParams(),
             version=0):
         
-        self.cfg = cfg
+        self.paths = paths
         self.name = name        
         self.version = version
 
@@ -152,7 +152,7 @@ class MatrixFactorizationTrain:
             
 
     def save(self):        
-        dir_path = self.cfg.model_dir_path(self.data_name, self.name, self.version)
+        dir_path = self.paths.model_dir_path(self.data_name, self.name, self.version)
         dir_path.mkdir(parents=True, exist_ok=True)
         logging.info(f'saving model at: {dir_path}')
         metadata = dict(
@@ -162,108 +162,7 @@ class MatrixFactorizationTrain:
         with open(dir_path / 'metadata.json', 'tw') as jsonfile:
             json.dump(metadata, jsonfile, cls=PropJSONEncoder, sort_keys=True, indent=2)
 
-        torch.save(self.model.to(torch.device('cpu')), dir_path / self.cfg.model_filename())
+        torch.save(self.model.to(torch.device('cpu')), dir_path / self.paths.model_filename())
         
-
-def load_model(cfg, data_name, model_name, version=0):
-    dir_path = cfg.model_dir_path(data_name, model_name, version=0)
-    return torch.load(dir_path / cfg.model_filename())
-
-def model_exists(cfg, data_name, model_name, version=0):
-    dir_path = cfg.model_dir_path(data_name, model_name, version=0)
-    return (dir_path / cfg.model_filename()).exists()
-
-class IPWEstimator:
-
-    def __init__(self, name, propensity_model, configs):
-        self.name = name
-        #self.probability_matrix = probability_matrix
-        self.propensity_model = propensity_model
-        self.configs = configs
-    
-    def eval_ate(self, loader, cause_id, resp_id):
-
-        ncfg = len(self.configs)
-        Y1, Y0, norm1, norm0 = ([0] * ncfg, [0] * ncfg, [0] * ncfg, [0] * ncfg)
-
-        for user_id, treatment, response, treatment_time, response_time in loader:
-
-            treatment_mask = (
-                treatment & (~response | (treatment_time < response_time))
-            )
-            control_mask = ~treatment_mask
-
-            ## PUSH_ASSERT - abstract that away #self.probablity_matrix[user_id-1, cause_id]
-            propensity =  self.propensity_model(cause_id, user_id)
-
-            for i, cfg in enumerate(self.configs):
-
-                clipping = torch.ones(1) * cfg.clipping
-                prop1 = torch.maximum(propensity, clipping)
-                prop0 = torch.maximum(1-propensity, clipping)
-
-                Y1[i] += (response * treatment_mask / prop1).sum()
-                Y0[i] += (response * control_mask / prop0).sum()
-
-                if cfg.stabilized:
-                    norm1[i] += (1.0*treatment_mask/prop1).sum()
-                    norm0[i] += (1.0*control_mask/prop0).sum()
-                else:
-                    nsamples = user_id.shape[0]
-                    norm1[i] += nsamples
-                    norm0[i] += nsamples
-
-        values =  [
-            ((Y1[i] / norm1[i]) - (Y0[i] / norm0[i])).tolist()
-            for i in range(len(self.configs))
-        ]
-        return values
-
-    def get_names(self):
-        names = [f"{self.name}.{self.config_to_name(cfg)}" for cfg in self.configs]
-        return names
-    
-    def config_to_name(self, cfg):        
-        return ("IPW" + 
-                (f".clp{cfg.clipping}" if cfg.clipping else "") + 
-                (".s" if cfg.stabilized else ""))
-    
-
-
-        
-
-class Other:
-
-    def save_models(self, base_model_path):
-        Path(base_model_path)
-        assert self.model is not None
-
-        torch.save(self.model, Path(base_model_path) / f"model.{self.model_name}.pt")
-
-    def load_models(self, base_model_path):
-        path = Path(base_model_path) / f"model.{self.model_name}.pt"
-        if path.exists():
-            self.model = torch.load(path)
-            return True
-        return False
-
-    @property
-    def model_name(self):
-        return f"MF{self.n_factors}.{self.version}.{digest(self.train_params)}"
-    @property
-    def estimator(self):
-        if self._estimator is not None:
-            return self._estimator
-        
-        assert self.model is not None
-        probs = self.model.probability_matrix()
-        propensity_model = lambda cause_id, user_ids: probs[user_ids-1, cause_id-1]            
-        self._estimator = IPWEstimator(self.name, propensity_model, self.ipw_params)
-        return self._estimator
-    
-
-
-###############################
-# #############################                
 
 

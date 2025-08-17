@@ -5,7 +5,10 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 
 
-class MovieLens100KLoader:
+class UIDataLoader:
+    pass
+
+class MovieLens100KLoader(UIDataLoader):
 
     def __init__(self, base_path):
         self.base_path = base_path
@@ -32,7 +35,7 @@ class MovieLens100KLoader:
         return "MovieLens100K"
 
 
-class MovieLens1MLoader:
+class MovieLens1MLoader(UIDataLoader):
 
     def __init__(self, base_path):
         self.base_path = base_path
@@ -55,7 +58,7 @@ class MovieLens1MLoader:
         return "MovieLens1M"
 
 
-class CsvLoader:
+class CsvLoader(UIDataLoader):
     def __init__(self, name, path):
         self.path = path
         self.dataset_name = name

@@ -13,9 +13,9 @@ import torch.nn.functional as F
 
 
 
-def create_estimations(cfg, uidata, method_name, group_name, estimator, reset_ids=False, batch_size=2**12):
+def create_estimations(paths, uidata, method_name, group_name, estimator, reset_ids=False, batch_size=2**12):
 
-    group_path = cfg.get_product_csv(group_name)
+    group_path = paths.get_product_csv(group_name)
     pdf = pd.read_csv(group_path)
     if reset_ids:
         pdf = enrich_cause_indexes(pdf, uidata.info)
@@ -38,15 +38,15 @@ def create_estimations(cfg, uidata, method_name, group_name, estimator, reset_id
 
     est = pd.concat(dfs, axis=0, ignore_index=True)
 
-    out_path = cfg.estimation_path(uidata.name(), group_name.replace("/","."), method_name)
+    out_path = paths.estimation_path(uidata.name(), group_name.replace("/","."), method_name)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     est.to_csv(out_path, index=False)
     return est
 
-def load_all_estimations(cfg, data_name, group_name, merge_type='inner'):
-    pattern = cfg.estimation_path(data_name, group_name.replace("/","."), '*')
-    paths = glob.glob(str(pattern))
-    dfs = [pd.read_csv(x) for x in paths]
+def load_all_estimations(paths, data_name, group_name, merge_type='inner'):
+    pattern = paths.estimation_path(data_name, group_name.replace("/","."), '*')
+    estimation_paths = glob.glob(str(pattern))
+    dfs = [pd.read_csv(x) for x in estimation_paths]
     merged = reduce(lambda left, right: pd.merge(left, right, on=["treatment_idx", "resp_idx"], how=merge_type), dfs)
     return merged
 
