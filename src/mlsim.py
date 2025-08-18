@@ -67,8 +67,8 @@ def generate_ground_truth_estimate(probs, cmat, causes):
 
     for cidx, cs in enumerate(causes):
         
-        control_data, _ = generate_data(probs, cmat, intervention={cs : 0})
-        treatment_data, _ = generate_data(probs, cmat, intervention={cs : 1})
+        control_data, _ = generate_sim_data(probs, cmat, intervention={cs : 0})
+        treatment_data, _ = generate_sim_data(probs, cmat, intervention={cs : 1})
         ate = treatment_data.mean(dim=0) - control_data.mean(dim=0)
         
         max_ate = ate[torch.arange(num_items) != (cs - 1)].max()
