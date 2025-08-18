@@ -10,7 +10,6 @@ def parse_arguments():
     parser.add_argument("--model", type=str, default=None, help="TBD")
     parser.add_argument("--data", type=str, default=None, help="TBD")
     parser.add_argument("--cfg", type=str, default='configs/config.yaml', help="TBD")
-    parser.add_argument("--cfg", type=str, default='configs/config.yaml', help="TBD")
     parser.add_argument("--models-cfg", dest='models_cfg', type=str, default='configs/models.yaml', help="TBD")
     parser.add_argument('--rewrite', action='store_true', help='rewrite if exists', default=False)
     parser.add_argument('--causal-tags', dest='causal_tags', default='MoviesCausalGPT')
