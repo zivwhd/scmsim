@@ -36,7 +36,7 @@ def get_model_trainer(paths, models_cfg, model_name):
     unused_args = set(args.keys())
     assert (not unused_args), "unused model args: {unused_args}"
 
-    trainer = ctor(paths=paths, name=model_name, **args)
+    trainer = ctor(paths=paths, name=model_name, **ctor_args)
     return trainer
 
 
