@@ -46,7 +46,7 @@ if __name__ == '__main__':
     
     if args.action == 'train':
         models_cfg = read_cfg(args.models_cfg)
-        trainer = get_model_trainer(paths, models_cfg, args.model)
+        trainer = get_model_trainer(paths, models_cfg['models'], args.model)
         uidata = MovieLensData(get_uidata_loader(global_cfg, 'ml-100k'))
         trainer.fit(uidata)
 
