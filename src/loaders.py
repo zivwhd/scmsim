@@ -22,7 +22,7 @@ class PathProvider:
         return Path(self.products_path) / f'{product}.csv'
 
 
-def get_model_trainer(cfg, models_cfg, model_name):
+def get_model_trainer(paths, models_cfg, model_name):
     args = models_cfg[model_name] 
     model_type = args.pop('model_type')
     if model_type == 'MatrixFactorization':
@@ -36,7 +36,7 @@ def get_model_trainer(cfg, models_cfg, model_name):
     unused_args = set(args.keys())
     assert (not unused_args), "unused model args: {unused_args}"
 
-    trainer = ctor(cfg=cfg, name=model_name, **args)
+    trainer = ctor(paths=paths, name=model_name, **args)
     return trainer
 
 
