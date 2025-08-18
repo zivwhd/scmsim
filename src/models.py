@@ -111,6 +111,9 @@ class MFTrainParams:
     n_epochs : int = 5
     shuffle : bool = True
 
+    def __post_init__(self):
+        self.lr = float(self.lr)
+        self.wd = float(self.wd)
 
 class MatrixFactorizationTrain:
 
