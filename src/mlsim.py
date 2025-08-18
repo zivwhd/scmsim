@@ -2,27 +2,6 @@ import torch
 import logging
 import pandas as pd
 
-def enrich_cause_indexes(csdf, info):
-    # Drop existing columns if present
-    csdf = csdf.drop(columns=['treatment_idx', 'resp_idx'], errors='ignore')
-
-    # Merge for treatment_idx
-    csdf = csdf.merge(
-        info[['title', 'item_id']],
-        left_on='treatment_title',
-        right_on='title',
-        how='inner'
-    ).rename(columns={'item_id': 'treatment_idx'}).drop(columns=['title'])
-
-    # Merge for resp_idx
-    csdf = csdf.merge(
-        info[['title', 'item_id']],
-        left_on='resp_title',
-        right_on='title',
-        how='inner'
-    ).rename(columns={'item_id': 'resp_idx'}).drop(columns=['title'])
-
-    return csdf
 
 def build_causal_matrix(df, num_items, factor=0.1):
     mat = torch.zeros((num_items, num_items))
@@ -34,7 +13,7 @@ def build_causal_matrix(df, num_items, factor=0.1):
 
     return mat
 
-def generate_data(base_probs, cmat, iter=10, intervention={}, device='cpu'):
+def generate_sim_data(base_probs, cmat, iter=10, intervention={}, device='cpu'):
     base_probs = base_probs.to(device)
     probs = (base_probs + 0.0)
     nlcmat = torch.log(1.0-torch.minimum(torch.maximum(cmat, torch.zeros(1)), torch.ones(1) * 0.99)).to(device)
@@ -105,3 +84,27 @@ def generate_ground_truth_estimate(probs, cmat, causes):
         ate = ate_list
     ))
 
+
+def doall(paths, name, model, uidata, causal_df, nsamples=1, rewrite=False):
+    #pdf = enrich_cause_indexes(pd.read_csv(paths.get_product_csv('MoviesCausalGPT'))), mlm.info)
+    probs = model.probablity_matrix()
+    
+    pdf = causal_df
+    pdf = pdf[pdf["causal_effect"] >= 0]
+    cmat = build_causal_matrix(pdf, uidata.num_items, factor=0.09)
+
+    for idx in range(nsamples):
+        out_path = paths.get_product_csv(f'{name}/samples.{idx}')
+
+        logging.info(f"generating samples {idx}")
+        df = create_pairs_df(watched, timestamps)
+        
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+
+        df.to_csv(f"products/{name}/samples.{idx}.csv", index=False)
+
+        watched, timestamps = mlsim.generate_sim_data(probs, cmat)
+
+        df = create_pairs_df(watched, timestamps)
+        df.to_csv(f"products/MFSim/samples.{idx}.csv", index=False)
+        

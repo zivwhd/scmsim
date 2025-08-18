@@ -2,6 +2,7 @@
 import argparse, logging, yaml
 from loaders import *
 from pipeline import *
+import mlsim
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Process a config file and optionally specify a creator.")
@@ -9,7 +10,11 @@ def parse_arguments():
     parser.add_argument("--model", type=str, default=None, help="TBD")
     parser.add_argument("--data", type=str, default=None, help="TBD")
     parser.add_argument("--cfg", type=str, default='configs/config.yaml', help="TBD")
+    parser.add_argument("--cfg", type=str, default='configs/config.yaml', help="TBD")
     parser.add_argument("--models-cfg", dest='models_cfg', type=str, default='configs/models.yaml', help="TBD")
+    parser.add_argument('--rewrite', action='store_true', help='rewrite if exists', default=False)
+    parser.add_argument('--causal-tags', dest='causal_tags', default='MoviesCausalGPT')
+    parser.add_argument("--nsamples", type=int, default=3, help="TBD")
     return parser.parse_args()
 
 def validate_cfg(cfg, path=[]):
@@ -50,4 +55,18 @@ if __name__ == '__main__':
         uidata = MovieLensData(get_uidata_loader(cfg, args.data))
         trainer.fit(uidata)
 
-    logging.info("done")
+    if args.action == 'sim.sample':
+        assert args.data == 'ml-1m'
+
+        uidata = MovieLensData(get_uidata_loader(cfg, args.data))
+        model = load_model(paths, uidata.name(), args.model)
+        name = f'CausalSim.{uidata.name}.{args.model}'
+
+        probs = model.probablity_matrix()
+        causal_df = enrich_cause_indexes(
+            pd.read_csv(paths.get_product_csv(args.causal_tags)), uidata.info)
+        
+        mlsim.create_sim_data_samples(paths, name, model, uidata, causal_df, 
+                                      nsamples=args.nsamples, rewrite=args.rewrite)
+
+    logging.info("done")    
