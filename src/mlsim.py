@@ -85,9 +85,9 @@ def generate_ground_truth_estimate(probs, cmat, causes):
     ))
 
 
-def doall(paths, name, model, uidata, causal_df, nsamples=1, rewrite=False):
+def create_sim_data_samples(paths, name, model, uidata, causal_df, nsamples=1, rewrite=False):
     #pdf = enrich_cause_indexes(pd.read_csv(paths.get_product_csv('MoviesCausalGPT'))), mlm.info)
-    probs = model.probablity_matrix()
+    probs = model.probability_matrix()
     
     pdf = causal_df
     pdf = pdf[pdf["causal_effect"] >= 0]
@@ -95,16 +95,14 @@ def doall(paths, name, model, uidata, causal_df, nsamples=1, rewrite=False):
 
     for idx in range(nsamples):
         out_path = paths.get_product_csv(f'{name}/samples.{idx}')
+        if out_path.exists() and not rewrite:
+            logging.info(f'{out_path} already exists; skipping')
+            continue
 
-        logging.info(f"generating samples {idx}")
-        df = create_pairs_df(watched, timestamps)
-        
+        logging.info(f"generating samples {idx}")        
         out_path.parent.mkdir(parents=True, exist_ok=True)
-
-        df.to_csv(f"products/{name}/samples.{idx}.csv", index=False)
-
-        watched, timestamps = mlsim.generate_sim_data(probs, cmat)
+        watched, timestamps = generate_sim_data(probs, cmat)
 
         df = create_pairs_df(watched, timestamps)
-        df.to_csv(f"products/MFSim/samples.{idx}.csv", index=False)
+        df.to_csv(out_path, index=False)
         
