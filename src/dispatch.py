@@ -61,7 +61,6 @@ if __name__ == '__main__':
         model = load_model(paths, uidata.name(), args.model)
         name = f'CausalSim.{uidata.name}.{args.model}'
 
-        probs = model.probablity_matrix()
         causal_df = enrich_cause_indexes(
             pd.read_csv(paths.get_product_csv(args.causal_tags)), uidata.info)
         
