@@ -6,7 +6,7 @@ import mlsim
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Process a config file and optionally specify a creator.")
-    parser.add_argument("--action", choices=["train", 'sim.sample'], help="TBD")
+    parser.add_argument("--action", choices=["train", 'sim.sample', 'sim.gt'], help="TBD")
     parser.add_argument("--model", type=str, default=None, help="TBD")
     parser.add_argument("--data", type=str, default=None, help="TBD")
     parser.add_argument("--cfg", type=str, default='configs/config.yaml', help="TBD")
