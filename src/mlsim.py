@@ -112,6 +112,7 @@ def create_ground_truth_samples(paths, name, model, uidata, causal_df, idx):
     pdf = pdf[pdf["causal_effect"] >= 0]
 
     selected_causes = list(set(pdf[pdf["causal_effect"] > 0]["treatment_idx"]))
+    selected_causes = selected_causes[0:3]
     probs = model.probability_matrix()
     cmat = build_causal_matrix(pdf, uidata.num_items, factor=0.09)    
     gtdf = generate_ground_truth_estimate(probs, cmat, selected_causes)    
