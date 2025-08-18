@@ -1,4 +1,4 @@
-from datasets import CsvLoader, MovieLens100KLoader, MovieLens1MLoader
+from datasets import CsvLoader, MovieLens100KLoader, MovieLens1MLoader, MovieLensData
 from models import MatrixFactorizationTrain, MFTrainParams
 from pathlib import Path
 from copy import deepcopy
