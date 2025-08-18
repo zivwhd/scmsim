@@ -65,7 +65,7 @@ if __name__ == '__main__':
         causal_df = enrich_cause_indexes(
             pd.read_csv(paths.get_product_csv(args.causal_tags)), uidata.info)
         
-        if args.action == 'sim.sample'
+        if args.action == 'sim.sample':
             mlsim.create_sim_data_samples(paths, name, model, uidata, causal_df, 
                                         nsamples=args.nsamples, rewrite=args.rewrite)
 
