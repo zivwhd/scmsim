@@ -1,0 +1,33 @@
+models:
+  MF30:
+    model_type: MatrixFactorization
+    n_factors: 30
+    train_params:    
+      lr: 1e-2 
+      wd: 1e-7
+      gamma: 0.95
+      batch_size:  1024      
+      n_epochs:  20      
+      shuffle: true
+
+  MF40:
+    model_type: MatrixFactorization
+    n_factors: 40
+    train_params:    
+      lr: 1e-2 
+      wd: 1e-7
+      gamma: 0.95
+      batch_size:  1024      
+      n_epochs:  20      
+      shuffle: true
+
+  MF50:
+    model_type: MatrixFactorization
+    n_factors: 50
+    train_params:    
+      lr: 1e-2 
+      wd: 1e-7
+      gamma: 0.95
+      batch_size:  1024      
+      n_epochs:  20      
+      shuffle: true

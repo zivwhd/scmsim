@@ -40,7 +40,7 @@ class MatrixFactorization(nn.Module):
             (self.P @ self.Q.transpose(0,1)) + self.b_u.unsqueeze(1) + self.b_i.unsqueeze(0) + self.mu)            
 
 
-def train_model(model, loader, epochs=5, lr=1e-3, device=torch.device('cpu'), gamma=0.95):
+def train_model(model, loader, epochs=5, lr=1e-3, gamma=0.95, wd=0, device=torch.device('cpu')):
     # Dataset and DataLoader
     model = model.to(device)
 
@@ -78,6 +78,11 @@ def train_model(model, loader, epochs=5, lr=1e-3, device=torch.device('cpu'), ga
                 accurate_neg += ((logits < 0) & (labels < 0.5)).sum()
 
             loss = criterion(logits.squeeze(), labels)
+            if wd:
+                l2_loss = 0
+                for param in [model.Q, model.P, model.b_i, model.b_u]:
+                    l2_loss += torch.sum(param ** 2)
+                loss += wd * l2_loss
 
             # Backprop
             optimizer.zero_grad()
@@ -99,7 +104,7 @@ def train_model(model, loader, epochs=5, lr=1e-3, device=torch.device('cpu'), ga
 @dataclass
 class MFTrainParams:
     lr : float = 1e-2 
-    #wd : float = 1e-7 ## missing
+    wd : float = 1e-7
     #pos_weight : float = 1.0 ## missing
     gamma : float = 0.95
     batch_size : int = 2**12
@@ -143,7 +148,8 @@ class MatrixFactorizationTrain:
 
         loader = DataLoader(dataset, batch_size=tp.batch_size, shuffle=tp.shuffle)
         model = train_model(model, loader, 
-                            epochs=tp.n_epochs, lr=tp.lr,  gamma=tp.gamma, device=device)
+                            epochs=tp.n_epochs, lr=tp.lr,  gamma=tp.gamma, wd=tp.wd,
+                            device=device)
         self.model = model
         self.data_name = uidata.name()
 
