@@ -1,5 +1,5 @@
 import torch
-import pickle
+import pickle, yaml
 import json, logging
 from pathlib import Path
 from typing import Any, Dict, NamedTuple
@@ -16,25 +16,6 @@ class PropJSONEncoder(json.JSONEncoder):
 def digest(obj):
      jstr = json.dumps(obj, cls=PropJSONEncoder, sort_keys=True)
      return hashlib.md5(jstr.encode("utf-8")).hexdigest()[0:6]
-
-
-class Config:
-    def __init__(self, results_path, products_path):        
-        self.results_path = results_path
-        self.products_path = products_path
-
-    def model_dir_path(self, data_name, model_name, version=0):
-        return Path(self.results_path) / data_name / 'models' / f"{model_name}.{version}"
-    
-    def model_filename(self):
-        return 'weights.pt'
-    
-    def estimation_path(self, data_name, group_name, method_name):
-        return Path(self.results_path) / data_name / 'estimations' / group_name / method_name
-
-    def get_product_csv(self, product):
-        return Path(self.products_path) / f'{product}.csv'
-    
     
 def resolve_device(device):
     if device is None:
@@ -44,4 +25,25 @@ def resolve_device(device):
         return torch.device(device)
     
     return device
+
+
+def validate_cfg(cfg, path=[]):
+    missing = []
+    for name, value in cfg.items():
+        next_path = path + [name]
+        if type(value) == dict:
+            missing += validate_cfg(value, next_path)
+        elif value is None:
+            missing.append(".".join(next_path))
+    if not path and missing:
+        print("Missing config:")
+        for x in missing:
+            print(f' - {x}')
+    return missing
+
+def read_cfg(path):
+    with open(path, "rt") as yfile:
+        cfg = yaml.safe_load(yfile)
+        validate_cfg(cfg)
+        return cfg
 

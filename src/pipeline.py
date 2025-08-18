@@ -40,6 +40,7 @@ def create_estimations(paths, uidata, method_name, group_name, estimator, reset_
 
     out_path = paths.estimation_path(uidata.name(), group_name.replace("/","."), method_name)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    logging.info(f"saving estimations at {out_path}")
     est.to_csv(out_path, index=False)
     return est
 
