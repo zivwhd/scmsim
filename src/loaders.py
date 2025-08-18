@@ -3,6 +3,7 @@ from models import MatrixFactorizationTrain, MFTrainParams
 from pathlib import Path
 from copy import deepcopy
 import torch
+import logging
 
 class PathProvider:
     def __init__(self, results_path, products_path):        
@@ -50,7 +51,9 @@ def get_uidata_loader(global_cfg, data_name):
 
 def load_model(paths, data_name, model_name, version=0):
     dir_path = paths.model_dir_path(data_name, model_name, version=0)
-    return torch.load(dir_path / paths.model_filename())
+    model_path = dir_path / paths.model_filename()
+    logging.info(f"loading model {model_name} (version {version}) at {model_path}")
+    return torch.load(model_path)
 
 def model_exists(paths, data_name, model_name, version=0):
     dir_path = paths.model_dir_path(data_name, model_name, version=0)
