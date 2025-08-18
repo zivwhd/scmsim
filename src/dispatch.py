@@ -45,7 +45,7 @@ if __name__ == '__main__':
     paths = PathProvider(cfg['paths']['results'], cfg['paths']['products'])
     
     if args.action == 'train':
-        trainer = get_model_trainer(paths, models_cfg, args.model)
+        trainer = get_model_trainer(paths, args.models_cfg, args.model)
         uidata = MovieLensData(get_uidata_loader(global_cfg, 'ml-100k'))
         trainer.fit(uidata)
 
