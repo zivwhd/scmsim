@@ -106,3 +106,22 @@ def create_sim_data_samples(paths, name, model, uidata, causal_df, nsamples=1, r
         df = create_pairs_df(watched, timestamps)
         df.to_csv(out_path, index=False)
         
+
+def create_ground_truth_samples(paths, name, model, uidata, causal_df, idx):
+    pdf = causal_df
+    pdf = pdf[pdf["causal_effect"] >= 0]
+
+    selected_causes = list(set(pdf[pdf["causal_effect"] > 0]["treatment_idx"]))
+    probs = model.probability_matrix()
+    cmat = build_causal_matrix(pdf, uidata.num_items, factor=0.09)    
+    gtdf = generate_ground_truth_estimate(probs, cmat, selected_causes)    
+    
+    out_path = paths.get_product_csv(f'{name}/gt.{idx}')
+    gtdf.to_csv(out_path, index=False)
+    
+    filtered_gtdf = pd.merge(pdf, gtdf, on=["treatment_idx", "resp_idx"], how='inner')
+    filtered_out_path = paths.get_product_csv(f'{name}/gt.filtered.{idx}')
+    filtered_gtdf.to_csv(out_path, index=False)
+
+
+
