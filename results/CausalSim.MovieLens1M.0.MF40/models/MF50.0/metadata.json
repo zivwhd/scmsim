@@ -1,0 +1,11 @@
+{
+  "n_factors": 50,
+  "train_params": {
+    "batch_size": 4096,
+    "gamma": 0.95,
+    "lr": 0.01,
+    "n_epochs": 20,
+    "shuffle": true,
+    "wd": 1e-07
+  }
+}
