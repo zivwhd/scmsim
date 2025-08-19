@@ -11,9 +11,9 @@ datasets:
   MFSim0:
     loader: CsvLoader
     path: products/MFSim/samples.0.csv
-  CausalSim.MovieLens1M.MF40:
+  CausalSim.MovieLens1M.0.MF40:
     loader: CsvLoader
-    name: CausalSim.MovieLens1M.MF40
+    name: CausalSim.MovieLens1M.0.MF40
     path: products/CausalSim.MovieLens1M.MF40/samples.0.csv
 
     
