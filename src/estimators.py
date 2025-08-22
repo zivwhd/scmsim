@@ -11,7 +11,7 @@ import torch.nn.functional as F
 class IPWParams:
     clipping: float = 0.0
     stabilized : float = False
-
+    timed_treatment : bool = True
 
 class MFIPWEstimator:
     def __init__(self, base_name, model, ipw_params):
@@ -22,7 +22,7 @@ class MFIPWEstimator:
     def estimate(self, uidata, tidx, ridx):
         probs = self.model.probability_matrix()
         watch = uidata.get_watch_matrix()
-        timestamp = uidata.get_watch_matrix(timestamps=True)
+        timestamp = uidata.get_watch_matrix(timestamps=True).trunc()
         one = torch.ones(1)
         res = {}        
         Wr = watch[:,ridx] * 1.0
@@ -31,8 +31,8 @@ class MFIPWEstimator:
         Tt = timestamp[:,tidx]
 
         basic_treatment_mask = (Wt > 0.5)
-        treatment_mask = (Wt > 0.5) & ((Wr < 0.5) | (Tt < Tr))
-        control_mask = ~treatment_mask
+        timed_treatment_mask = ( #(Wt > 0.5) & ((Wr < 0.5) | ((Wr >0.5) & (Tt <= Tr)))
+        ( (Wt > 0.5) & (Wr < 0.5) ) | ( (Wt > 0.5) & (Wr > 0.5) & (Tt < Tr)) )
         treatment_prob = probs[:, tidx]
 
         ipwcfg = []
@@ -40,22 +40,30 @@ class MFIPWEstimator:
             cfg_name = (
                 "IPW" + 
                 (f".clp{cfg.clipping}" if cfg.clipping else "") + 
-                (".s" if cfg.stabilized else ""))
+                (".s" if cfg.stabilized else "") + 
+                (".t" if cfg.timed_treatment else ""))
+            
             ipwcfg.append((self.base_name + "." + cfg_name, cfg))
             
         for name, cfg in ipwcfg:
+            if cfg.timed_treatment:
+                treatment_mask = timed_treatment_mask
+            else:
+                treatment_mask = basic_treatment_mask
+            control_mask = ~treatment_mask
+
             prop1 = torch.maximum(treatment_prob, cfg.clipping * one)
-            prop0 = torch.maximum(treatment_prob, cfg.clipping * one)
+            prop0 = torch.maximum(1-treatment_prob, cfg.clipping * one)
 
             if cfg.stabilized:
-                norm1 = (1 / prop1).sum(dim=0)
-                norm0 = (1 / prop0).sum(dim=0)
+                norm1 = (treatment_mask / prop1).sum(dim=0)
+                norm0 = (control_mask / prop0).sum(dim=0)
             else:
                 norm1 = Wr.shape[0]
                 norm0 = norm1
 
-            Y1 = (treatment_mask * Wr / norm1).sum(dim=0)
-            Y0 = (control_mask * Wr / norm1).sum(dim=0)
+            Y1 = (treatment_mask * Wr / prop1).sum(dim=0) / norm1
+            Y0 = (control_mask * Wr / prop0) .sum(dim=0) / norm0
             ate = (Y1 - Y0).numpy()
             res[name] = ate        
         return pd.DataFrame(res)        
@@ -98,3 +106,15 @@ class BasicEstimator:
             SATE = sate.numpy()
         ))
 
+class CosineSimilarityEstimator:
+    def __init__(self, base_name, model):
+        self.model = model
+        self.base_name = base_name
+        
+    @torch.no_grad()
+    def estimate(self, uidata, tidx, ridx):
+        name = f'{self.base_name}.CosSim'
+        return pd.DataFrame({ name : self.cosim(self.model.Q[tidx], self.model.Q[ridx]).numpy() })
+
+    def cosim(self, left, right):
+        return (left * right).sum(dim=1) / (left.norm(dim=1) * right.norm(dim=1))

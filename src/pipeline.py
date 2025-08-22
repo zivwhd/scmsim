@@ -10,10 +10,10 @@ import yaml
 import glob
 from functools import reduce
 import torch.nn.functional as F
+from scipy.stats import rankdata
 
 
-
-def create_estimations(paths, uidata, method_name, group_name, estimator, reset_ids=False, batch_size=2**12):
+def create_estimations(paths, uidata, method_name, group_name, estimator, reset_ids=False, batch_size=2**20):
 
     group_path = paths.get_product_csv(group_name)
     pdf = pd.read_csv(group_path)
@@ -51,17 +51,22 @@ def load_all_estimations(paths, data_name, group_name, merge_type='inner'):
     merged = reduce(lambda left, right: pd.merge(left, right, on=["treatment_idx", "resp_idx"], how=merge_type), dfs)
     return merged
 
-def get_causal_gpt_scores(cfg, uidata, group_name = 'MoviesCausalGPT'):
-    
-    group_path = cfg.get_product_csv(group_name)
-    pdf = pd.read_csv(group_path)
-    pdf = enrich_cause_indexes(pdf, uidata.info)
 
-    est = load_all_estimations(cfg, uidata.name(), group_name)
+def get_enriched_estimates(paths, uidata, group_name = 'MoviesCausalGPT', reset_ids=False):
+    group_path = paths.get_product_csv(group_name)
+    pdf = pd.read_csv(group_path)
+    if reset_ids:
+        pdf = enrich_cause_indexes(pdf, uidata.info)
+
+    est = load_all_estimations(paths, uidata.name(), group_name)
     est_cols = [x for x in est.columns if x not in ["treatment_idx","resp_idx"]]
     pdf = pd.merge(pdf, est, on=["treatment_idx", "resp_idx"], how='inner')
-    pdf
+    return pdf, est_cols
 
+def get_causal_gpt_scores(paths, uidata, group_name = 'MoviesCausalGPT'):
+
+    pdf, est_cols = get_enriched_estimates(paths, uidata, group_name, reset_ids=True)    
+    
     res = []
     for cname in est_cols:
         
@@ -70,9 +75,17 @@ def get_causal_gpt_scores(cfg, uidata, group_name = 'MoviesCausalGPT'):
         
         corr_pos = pos_pdf[cname].corr(pos_pdf["causal_effect"])
         corr = pdf[cname].corr(pdf["causal_effect"])
+
+    
+        spearman=np.corrcoef(
+            rankdata(np.asarray(pdf["causal_effect"]), method='average'),
+            rankdata(np.asarray(pdf[cname]), method='average'))[0, 1]        
+ 
         zero_mse = (zero_pdf[cname]**2).mean()
+
+
         res.append(dict(
-            name=cname, corr=corr, corr_pos=corr_pos, zero_mse=zero_mse))
+            name=cname, corr=corr, corr_pos=corr_pos, zero_mse=zero_mse, spearman=spearman))
         
     return pd.DataFrame(res)
 
@@ -91,9 +104,12 @@ def get_sim_scores(cfg, uidata, group_name):
     for cname in est_cols:        
         mse = lambda df: F.mse_loss(torch.tensor(df['ate'].to_numpy()), 
                                     torch.tensor(np.nan_to_num(df[cname].to_numpy(),0))).numpy()
+        mse = lambda df: F.mse_loss(torch.tensor(df['ate'].to_numpy()), 
+                                    torch.tensor(df[cname].to_numpy()))
         res.append(dict(
             name = cname, 
             mse = mse(pdf),
+            corr = pdf[cname].corr(pdf["ate"]),
             mse_pos = mse(pdf[pdf["ate"] > 0.1]),
             mse_zero = mse(pdf[pdf["ate"].abs() < 0.03])))
         
