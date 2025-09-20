@@ -22,7 +22,7 @@ class MFIPWEstimator:
     def estimate(self, uidata, tidx, ridx):
         probs = self.model.probability_matrix()
         watch = uidata.get_watch_matrix()
-        timestamp = uidata.get_watch_matrix(timestamps=True).trunc()
+        timestamp = uidata.get_watch_matrix(timestamps=True) #.trunc()
         one = torch.ones(1)
         res = {}        
         Wr = watch[:,ridx] * 1.0
@@ -33,10 +33,11 @@ class MFIPWEstimator:
         basic_treatment_mask = (Wt > 0.5)
         timed_treatment_mask = ( #(Wt > 0.5) & ((Wr < 0.5) | ((Wr >0.5) & (Tt <= Tr)))
         ( (Wt > 0.5) & (Wr < 0.5) ) | ( (Wt > 0.5) & (Wr > 0.5) & (Tt < Tr)) )
-        treatment_prob = probs[:, tidx]
+        
 
         ipwcfg = []
         for cfg in self.ipw_params:
+            
             cfg_name = (
                 "IPW" + 
                 (f".clp{cfg.clipping}" if cfg.clipping else "") + 
@@ -46,11 +47,27 @@ class MFIPWEstimator:
             ipwcfg.append((self.base_name + "." + cfg_name, cfg))
             
         for name, cfg in ipwcfg:
+            treatment_prob = probs[:, tidx]            
+
             if cfg.timed_treatment:
-                treatment_mask = timed_treatment_mask
+                #treatment_mask = timed_treatment_mask
+                treatment_mask = basic_treatment_mask
             else:
                 treatment_mask = basic_treatment_mask
             control_mask = ~treatment_mask
+
+            keep_factor_0 = 1.0
+            keep_factor_1 = 1.0
+            if cfg.timed_treatment:
+                keep_mask =  treatment_mask * (Wr > 0.5) 
+                keep_factor_0 = (((Tr >= Tt) * keep_mask).sum(dim=0, keepdim=True) / 
+                                 keep_mask.sum(dim=0, keepdim=True))
+                keep_factor_1 = ((Wr > 0.5) & (Tr >= Tt)) * 1.0
+                #Ye1_prop = (treatment_mask * (Wr > 0.5)).sum(dim=0, keepdim=True) / (Wr > 0.5).sum(dim=0, keepdim=True)
+                #Ye0_prop = (treatment_mask * (Wr < 0.5)).sum(dim=0, keepdim=True) / (Wr < 0.5).sum(dim=0, keepdim=True)
+                #treatment_prob = treatment_prob * (
+                #    (Wr > 0.5) * Ye1_prop + (Wr < 0.5) * Ye0_prop
+                #)
 
             prop1 = torch.maximum(treatment_prob, cfg.clipping * one)
             prop0 = torch.maximum(1-treatment_prob, cfg.clipping * one)
@@ -62,8 +79,8 @@ class MFIPWEstimator:
                 norm1 = Wr.shape[0]
                 norm0 = norm1
 
-            Y1 = (treatment_mask * Wr / prop1).sum(dim=0) / norm1
-            Y0 = (control_mask * Wr / prop0) .sum(dim=0) / norm0
+            Y1 = (treatment_mask * Wr * keep_factor_1/ prop1).sum(dim=0) / norm1
+            Y0 = (control_mask * Wr  * keep_factor_0 / prop0) .sum(dim=0) / norm0
             ate = (Y1 - Y0).numpy()
             res[name] = ate        
         return pd.DataFrame(res)        

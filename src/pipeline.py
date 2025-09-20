@@ -104,8 +104,8 @@ def get_sim_scores(cfg, uidata, group_name):
     for cname in est_cols:        
         mse = lambda df: F.mse_loss(torch.tensor(df['ate'].to_numpy()), 
                                     torch.tensor(np.nan_to_num(df[cname].to_numpy(),0))).numpy()
-        mse = lambda df: F.mse_loss(torch.tensor(df['ate'].to_numpy()), 
-                                    torch.tensor(df[cname].to_numpy()))
+        #mse = lambda df: F.mse_loss(torch.tensor(df['ate'].to_numpy()), 
+        #                            torch.tensor(df[cname].to_numpy())).numpy()
         res.append(dict(
             name = cname, 
             mse = mse(pdf),
