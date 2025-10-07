@@ -74,6 +74,8 @@ def generate_ground_truth_estimate(probs, cmat, causes):
         
         control_data, treatment_time = generate_sim_data(probs, cmat, intervention={cs : 0})
         treatment_data, control_time = generate_sim_data(probs, cmat, intervention={cs : 1})
+
+        ## basic ate - ignores time
         ate = treatment_data.mean(dim=0) - control_data.mean(dim=0)
 
         ## ord means that there's NO reverse order btween treatment and effect 
@@ -85,13 +87,17 @@ def generate_ground_truth_estimate(probs, cmat, causes):
         ate_fut = (treatment_data * treatment_ord).mean(dim=0) - (control_data * control_ord).mean(dim=0)
 
         ## ate drop: when reverse order - we drop the samples
-        ate_drop = (treatment_data * treatment_ord).sum(dim=0) / treatment_ord.sum(dim=0) - (control_data * control_ord).sum(dim=0) / control_ord.sum(dim=0)
+        ate_drop = (
+            (treatment_data * treatment_ord).sum(dim=0) / treatment_ord.sum(dim=0) - 
+            (control_data * control_ord).sum(dim=0) / control_ord.sum(dim=0))
 
         ## ate trt fut: when reverse order Y is considered - but we take the validity indication from the treatment
         ate_trt_fut = (treatment_data * treatment_ord).mean(dim=0) - (control_data * treatment_ord).mean(dim=0)
 
         ## ate trt drop: when reverse order - we drop the samples - but we take the validity indiction rom the treatment
-        ate_trt_drop = (treatment_data * treatment_ord).sum(dim=0) / treatment_ord.sum(dim=0) - (control_data * treatment_ord).sum(dim=0) / treatment_ord.sum(dim=0)
+        ate_trt_drop = (
+            (treatment_data * treatment_ord).sum(dim=0) / treatment_ord.sum(dim=0) - 
+            (control_data * treatment_ord).sum(dim=0) / treatment_ord.sum(dim=0))
 
 
         max_ate = ate[torch.arange(num_items) != (cs - 1)].max()
