@@ -7,7 +7,7 @@ datasets:
     base_path: ml-100k
   ml-1m:
     loader: MovieLens1MLoader
-    base_path: ml-1m
+    base_path: /home/gouni/ml-1m
   MFSim0:
     loader: CsvLoader
     path: products/MFSim/samples.0.csv

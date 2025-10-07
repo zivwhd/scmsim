@@ -107,14 +107,17 @@ def create_sim_data_samples(paths, name, model, uidata, causal_df, nsamples=1, r
         df.to_csv(out_path, index=False)
         
 
-def create_ground_truth_samples(paths, name, model, uidata, causal_df, idx):
+def create_ground_truth_samples(paths, name, model, uidata, causal_df, idx, partition=None):
     out_path = paths.get_product_csv(f'{name}/gt.{idx}')
     filtered_out_path = paths.get_product_csv(f'{name}/gt.filtered.{idx}')
     logging.info(f"out: {out_path} , {filtered_out_path}")
     pdf = causal_df
     pdf = pdf[pdf["causal_effect"] >= 0]
 
-    selected_causes = list(set(pdf[pdf["causal_effect"] > 0]["treatment_idx"]))
+    # selected_causes = list(set(pdf[pdf["causal_effect"] > 0]["treatment_idx"]))
+    selected_causes = list(range(1, uidata.num_items + 1))
+    if partition is not None:
+        selected_causes = [c for c in selected_causes if (c % partition) == idx - 10]
     probs = model.probability_matrix()
     cmat = build_causal_matrix(pdf, uidata.num_items, factor=0.09)    
     gtdf = generate_ground_truth_estimate(probs, cmat, selected_causes)    

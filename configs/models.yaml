@@ -17,7 +17,7 @@ models:
       lr: 1e-2 
       wd: 1e-7
       gamma: 0.95
-      batch_size:  1024      
+      batch_size:  32000      
       n_epochs:  20      
       shuffle: true
 

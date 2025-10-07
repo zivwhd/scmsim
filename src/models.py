@@ -59,6 +59,7 @@ def train_model(model, loader, epochs=5, lr=1e-3, gamma=0.95, wd=0, device=torch
         accurate_pos, accurate_neg = 0, 0
 
         for user_ids, item_ids, labels in loader:
+            logging.info(f"New Iteration {user_ids.shape} {item_ids.shape} {labels.shape}")
             user_ids = user_ids.to(device)
             item_ids = item_ids.to(device)
             labels = labels.to(device)

@@ -53,7 +53,7 @@ def load_model(paths, data_name, model_name, version=0):
     dir_path = paths.model_dir_path(data_name, model_name, version=0)
     model_path = dir_path / paths.model_filename()
     logging.info(f"loading model {model_name} (version {version}) at {model_path}")
-    return torch.load(model_path)
+    return torch.load(model_path, weights_only=False)
 
 def model_exists(paths, data_name, model_name, version=0):
     dir_path = paths.model_dir_path(data_name, model_name, version=0)
