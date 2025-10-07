@@ -20,11 +20,12 @@ def generate_sim_data(base_probs, cmat, iter=10, intervention={}, device='cpu'):
     
     #watched = torch.zeros(probs.shape, device=device)   
 
-    watched = ( torch.rand(base_probs.shape, device=device) < base_probs) * 1.0
-    timestamps = watched * torch.rand(watched.shape, device=device)
+    watched = ( torch.rand(base_probs.shape, device=device) < base_probs) * 1.0    
     
     for  itemid, value in intervention.items():
         watched[:,itemid-1] = value
+
+    timestamps = watched * torch.rand(watched.shape, device=device)
     
     added = watched
     #selection_mask = torch.ones(probs.shape[0], device=device)
@@ -155,7 +156,7 @@ def create_ground_truth_samples(paths, name, model, uidata, causal_df, idx, part
 
     # selected_causes = list(set(pdf[pdf["causal_effect"] > 0]["treatment_idx"]))
     selected_causes = list(range(1, uidata.num_items + 1))    
-    #selected_causes = selected_causes[0:4] ## patch
+    selected_causes = selected_causes[0:4] ## patch
     if partition is not None:
         selected_causes = [c for c in selected_causes if (c % partition) == idx - 10]
     probs = model.probability_matrix()
