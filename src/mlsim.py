@@ -63,6 +63,11 @@ def generate_ground_truth_estimate(probs, cmat, causes):
     treatment_list = []
     response_list = []
     ate_list = []
+    ate_fut_list = []
+    ate_drop_list = []
+    ate_trt_fut_list = []
+    atre_trt_drop_list = []
+
     num_items = cmat.shape[0]
 
     for cidx, cs in enumerate(causes):
@@ -115,7 +120,7 @@ def create_ground_truth_samples(paths, name, model, uidata, causal_df, idx, part
     pdf = pdf[pdf["causal_effect"] >= 0]
 
     # selected_causes = list(set(pdf[pdf["causal_effect"] > 0]["treatment_idx"]))
-    selected_causes = list(range(1, uidata.num_items + 1))
+    selected_causes = list(range(1, uidata.num_items + 1))    
     if partition is not None:
         selected_causes = [c for c in selected_causes if (c % partition) == idx - 10]
     probs = model.probability_matrix()
