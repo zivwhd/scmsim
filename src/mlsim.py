@@ -66,7 +66,7 @@ def generate_ground_truth_estimate(probs, cmat, causes):
     ate_fut_list = []
     ate_drop_list = []
     ate_trt_fut_list = []
-    atre_trt_drop_list = []
+    ate_trt_drop_list = []
 
     num_items = cmat.shape[0]
 
