@@ -157,7 +157,7 @@ def create_ground_truth_samples(paths, name, model, uidata, causal_df, idx, part
 
     # selected_causes = list(set(pdf[pdf["causal_effect"] > 0]["treatment_idx"]))
     selected_causes = list(range(1, uidata.num_items + 1))    
-    selected_causes = selected_causes[0:4] ## patch
+    selected_causes = #selected_causes[0:4] ## patch
     if partition is not None:
         selected_causes = [c for c in selected_causes if (c % partition) == idx - 10]
     probs = model.probability_matrix()
