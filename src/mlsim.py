@@ -72,21 +72,49 @@ def generate_ground_truth_estimate(probs, cmat, causes):
 
     for cidx, cs in enumerate(causes):
         
-        control_data, _ = generate_sim_data(probs, cmat, intervention={cs : 0})
-        treatment_data, _ = generate_sim_data(probs, cmat, intervention={cs : 1})
+        control_data, treatment_time = generate_sim_data(probs, cmat, intervention={cs : 0})
+        treatment_data, control_time = generate_sim_data(probs, cmat, intervention={cs : 1})
         ate = treatment_data.mean(dim=0) - control_data.mean(dim=0)
-        
+
+        ## ord means that there's NO reverse order btween treatment and effect 
+        ## control_ord is all ones
+        treatment_ord =  ~((treatment_data > 0.5) & (treatment_data[:, cs:(cs+1)] > 0.5) & (treatment_time > treatment_time[:,cs:(cs+1)]))
+        control_ord =  ~((control_data > 0.5) & (control_data[:, cs:(cs+1)] > 0.5) & (control_time > control_time[:,cs:(cs+1)]))
+
+        ## ate fut: when reverse order Y is considered )
+        ate_fut = (treatment_data * treatment_ord).mean(dim=0) - (control_data * control_ord).mean(dim=0)
+
+        ## ate drop: when reverse order - we drop the samples
+        ate_drop = (treatment_data * treatment_ord).sum(dim=0) / treatment_ord.sum(dim=0) - (control_data * control_ord).sum(dim=0) / control_ord.sum(dim=0)
+
+        ## ate trt fut: when reverse order Y is considered - but we take the validity indication from the treatment
+        ate_trt_fut = (treatment_data * treatment_ord).mean(dim=0) - (control_data * treatment_ord).mean(dim=0)
+
+        ## ate trt drop: when reverse order - we drop the samples - but we take the validity indiction rom the treatment
+        ate_trt_drop = (treatment_data * treatment_ord).sum(dim=0) / treatment_ord.sum(dim=0) - (control_data * treatment_ord).sum(dim=0) / treatment_ord.sum(dim=0)
+
+
         max_ate = ate[torch.arange(num_items) != (cs - 1)].max()
         logging.info(f"[{cidx}] evaluated cause: {cs}; max-ate:{max_ate}")
         treatment_list += [cs] * num_items
         response_list += list(range(1, 1 + num_items))
         assert ate.shape[0] == num_items
         ate_list += ate.tolist()
+        ate_fut_list += ate_fut.tolist()
+        ate_trt_fut_list += ate_trt_fut.tolist()
+        ate_drop_list += ate_drop.tolist()
+        ate_trt_drop_list += ate_trt_drop.tolist()
+        
 
     return pd.DataFrame(dict(
         treatment_idx = treatment_list,
         resp_idx = response_list,
-        ate = ate_list
+        ate = ate_list,
+        ate_fut = ate_fut_list,
+        ate_drop = ate_drop_list,
+        ate_trt_fut = ate_trt_fut_list,
+        ate_trt_drop = ate_trt_drop_list,
+
     ))
 
 
@@ -121,7 +149,7 @@ def create_ground_truth_samples(paths, name, model, uidata, causal_df, idx, part
 
     # selected_causes = list(set(pdf[pdf["causal_effect"] > 0]["treatment_idx"]))
     selected_causes = list(range(1, uidata.num_items + 1))    
-    selected_causes[0:10]
+    selected_causes[0:10] ## patch
     if partition is not None:
         selected_causes = [c for c in selected_causes if (c % partition) == idx - 10]
     probs = model.probability_matrix()
