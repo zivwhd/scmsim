@@ -63,7 +63,7 @@ def generate_federated_data(params, samples_per_client, seed, batch_size=10000):
 
         policy_logit_final = policy_logit * (confounding_level) + rnd * (1-confounding_level)
         #propensity = torch.sigmoid(torch.matmul(X, policy))*0.6 + 0.2
-        propensity = torch.sigmoid(policy_logit)*0.8 + 0.1
+        propensity = torch.sigmoid(policy_logit_final)*0.8 + 0.1
         T = torch.bernoulli(propensity)
 
         
