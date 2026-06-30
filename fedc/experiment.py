@@ -19,7 +19,7 @@ def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_
     dgp_params = generate_dgp_parameters(
         num_clients=NUM_CLIENTS, 
         num_features=NUM_FEATURES, 
-        confounding_level=confounding_level
+        confounding_level=confounding_level,
         seed=seed,
     )
 
