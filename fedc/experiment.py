@@ -1,6 +1,6 @@
 
 from pipeline import *
-import time, path, os, sys
+import time, os, sys
 import torch
 import torch.nn as nn
 import torch.optim as optim
