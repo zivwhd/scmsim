@@ -55,7 +55,7 @@ def generate_federated_data(params, samples_per_client, seed, batch_size=10000):
     for client_id in range(params['num_clients']):
         # 1. Generate patient covariates (X)
         X = torch.randn(samples_per_client, num_features)
-        rnd = torch.randn(samples_per_client)
+        rnd = torch.randn(samples_per_client, 1)
 
         # 2. Apply the FIXED hospital policy to assign treatment
         policy = hospital_policies[client_id]
