@@ -12,6 +12,16 @@ import pandas as pd
 
 
 def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_level=1, seed=42, out_path="sim"):
+
+    print("--- Starting Federated Causal Simulation ---")
+    print(f"Clients          : {NUM_CLIENTS}")
+    print(f"Features         : {NUM_FEATURES}")
+    print(f"FL Rounds        : {FL_ROUNDS}")
+    print(f"Confounding Level: {confounding_level}")
+    print(f"Seed             : {seed}")
+    print(f"Output Path      : {out_path}")
+    print("--------------------------------------------")    
+    
     device = torch.device("cuda" if torch.cuda.is_available() 
                       else "mps" if torch.backends.mps.is_available() 
                       else "cpu")
