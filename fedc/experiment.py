@@ -11,7 +11,7 @@ from torch.utils.data import TensorDataset, DataLoader
 import pandas as pd
 
 
-def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_level=1, seed=42, out_path="sim"):
+def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_level=1, samples_per_client=5000, seed=42, out_path="sim"):
 
     print("--- Starting Federated Causal Simulation ---")
     print(f"Clients          : {NUM_CLIENTS}")
@@ -21,7 +21,7 @@ def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_
     print(f"Seed             : {seed}")
     print(f"Output Path      : {out_path}")
     print("--------------------------------------------")    
-    
+
     device = torch.device("cuda" if torch.cuda.is_available() 
                       else "mps" if torch.backends.mps.is_available() 
                       else "cpu")
@@ -36,7 +36,7 @@ def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_
     print("Generating Training Data...")
     train_loaders = generate_federated_data(
         params=dgp_params, 
-        samples_per_client=5000, 
+        samples_per_client=samples_per_client, 
         seed=44 # Train Seed
     )
 
@@ -110,7 +110,7 @@ def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_
     models["FED-TARNET-IPWG"] = taripwg_outcome
 
     results = []
-    desc = f"CLIENTS{NUM_CLIENTS}_FEAT{NUM_FEATURES}_ROUNDS{FL_ROUNDS}_CONF{confounding_level}_SEED{seed}"
+    desc = f"CLIENTS{NUM_CLIENTS}_SAMP{samples_per_client}_FEAT{NUM_FEATURES}_ROUNDS{FL_ROUNDS}_CONF{confounding_level}_SEED{seed}"
 
     tm = int(time.time())
     for model_name, omodel in models.items():
@@ -134,7 +134,10 @@ def main():
     # Define lowercase arguments with their corresponding types and defaults
     parser.add_argument('--num_clients', type=int, default=3, 
                         help='Number of federated clients (default: 3)')
-    
+
+    parser.add_argument('--nsamples', type=int, default=5000, 
+                        help='samples per clients (default: 3)')
+
     parser.add_argument('--num_features', type=int, default=10, 
                         help='Number of features in the dataset (default: 10)')
     
