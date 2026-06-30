@@ -63,7 +63,15 @@ def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_
     baseline_outcome = train_federated_model(
         baseline_outcome, train_loaders, epochs=FL_ROUNDS, is_propensity=False, propensity_model_for_iptw=None, device=device, end_lr = 0.005    
     )    
-    models["FED-AVG"] = baseline_outcome
+    models["FedAvg"] = baseline_outcome
+
+    print("\n3. Training Baseline Outcome Model (Standard FedAvg)...")
+    baseline_outcome2 = GlobalOutcomeModel(NUM_FEATURES)
+    baseline_outcome2 = train_federated_model(
+        baseline_outcome2, train_loaders, epochs=FL_ROUNDS, is_propensity=False, propensity_model_for_iptw=None, device=device, end_lr = 0.005    
+    )    
+    models["FedAvg2"] = baseline_outcome2
+
 
     print("\n4. Training FED-IPTW Outcome Model (Weighted FedAvg)...")
     iptw_outcome = GlobalOutcomeModel(NUM_FEATURES)
@@ -74,13 +82,13 @@ def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_
     models["FED-IPTW"] = iptw_outcome
     
 
-    print("\n5. Training Glob-FED-IPTW Outcome Model (Weighted FedAvg)...")
-    ipwg_outcome = GlobalOutcomeModel(NUM_FEATURES)
-    ipwg_outcome = train_federated_model(
-        ipwg_outcome, train_loaders, epochs=FL_ROUNDS, is_propensity=False, propensity_model_for_iptw=trained_propensity, glob_adjusted=True, device=device,
-        end_lr = 0.005    
-    )
-    models["FED-IPWG"] = ipwg_outcome
+    #print("\n5. Training Glob-FED-IPTW Outcome Model (Weighted FedAvg)...")
+    #ipwg_outcome = GlobalOutcomeModel(NUM_FEATURES)
+    #ipwg_outcome = train_federated_model(
+    #    ipwg_outcome, train_loaders, epochs=FL_ROUNDS, is_propensity=False, propensity_model_for_iptw=trained_propensity, glob_adjusted=True, device=device,
+    #    end_lr = 0.005    
+    #)
+    #models["FED-IPWG"] = ipwg_outcome
 
 
 
@@ -89,7 +97,7 @@ def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_
     tar_outcome = train_federated_model(
         tar_outcome, train_loaders, epochs=FL_ROUNDS, is_propensity=False, device=device, end_lr = 0.005    
     )
-    models["FED-TARNET"] = tar_outcome
+    models["FedAvg-TARNet"] = tar_outcome
 
 
     print("\n6. Training Tar-FED-IPTW Outcome Model (Weighted FedAvg)...")
@@ -98,16 +106,16 @@ def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_
         taripw_outcome, train_loaders, epochs=FL_ROUNDS, is_propensity=False, propensity_model_for_iptw=trained_propensity, device=device,
         end_lr = 0.005    
     )
-    models["FED-TARNET-IPTW"] = taripw_outcome
+    models["FED-IPTW-TARNET"] = taripw_outcome
 
-    print("\n7. Training Tar-FED-IPTW Outcome Model (Weighted FedAvg)...")
-    taripwg_outcome = TarnetOutcomeModel(NUM_FEATURES)
-    taripwg_outcome = train_federated_model(
-        taripwg_outcome, train_loaders, epochs=FL_ROUNDS, is_propensity=False, propensity_model_for_iptw=trained_propensity, device=device, 
-        glob_adjusted=True,
-        end_lr = 0.005    
-    )
-    models["FED-TARNET-IPWG"] = taripwg_outcome
+    #print("\n7. Training Tar-FED-IPTW Outcome Model (Weighted FedAvg)...")
+    #taripwg_outcome = TarnetOutcomeModel(NUM_FEATURES)
+    #taripwg_outcome = train_federated_model(
+    ##    taripwg_outcome, train_loaders, epochs=FL_ROUNDS, is_propensity=False, propensity_model_for_iptw=trained_propensity, device=device, 
+    #    glob_adjusted=True,
+    #    end_lr = 0.005    
+    #)
+    #models["FED-TARNET-IPWG"] = taripwg_outcome
 
     results = []
     desc = f"CLIENTS{NUM_CLIENTS}_SAMP{samples_per_client}_FEAT{NUM_FEATURES}_ROUNDS{FL_ROUNDS}_CONF{confounding_level}_SEED{seed}"
@@ -163,6 +171,7 @@ def main():
         FL_ROUNDS=args.fl_rounds,
         confounding_level=args.confounding_level,
         seed=args.seed,
+        samples_per_client=args.nsamples,
         out_path=args.out_path
     )
 
