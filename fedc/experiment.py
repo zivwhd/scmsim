@@ -81,6 +81,14 @@ def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_
     )
     models["FED-IPTW"] = iptw_outcome
     
+    print("\n4. Training FED-IPTW Outcome Model (Weighted FedAvg)...")
+    iptw_outcome2 = GlobalOutcomeModel(NUM_FEATURES)
+    iptw_outcome2 = train_federated_model(
+        iptw_outcome2, train_loaders, epochs=FL_ROUNDS, is_propensity=False, propensity_model_for_iptw=trained_propensity, device=device,
+        end_lr = 0.005    
+    )
+    models["FED-IPTW2"] = iptw_outcome2
+
 
     #print("\n5. Training Glob-FED-IPTW Outcome Model (Weighted FedAvg)...")
     #ipwg_outcome = GlobalOutcomeModel(NUM_FEATURES)
