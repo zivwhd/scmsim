@@ -5,13 +5,27 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
-import copy
+import copy, random
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 import pandas as pd
 
 
 def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_level=1, samples_per_client=5000, seed=42, out_path="sim"):
+
+    tm = random.randint(1, 10000)
+    desc = f"CLIENTS{NUM_CLIENTS}_SAMP{samples_per_client}_FEAT{NUM_FEATURES}_ROUNDS{FL_ROUNDS}_CONF{confounding_level}_SEED{seed}"
+
+    results = []
+    def add_result(model_name, omodel):        
+        mean_b, ci_b = run_monte_carlo_evaluation(omodel, dgp_params)
+        record = dict(desc=desc, name=model_name, pehe=mean_b, pehe05=ci_b[0], pehe95=ci_b[1], nclients=NUM_CLIENTS, confounding_level=confounding_level)
+        print(record)
+        results.append(record)
+        path = os.path.join(out_path, f"{desc}.{tm}.csv")
+        pd.DataFrame(results).to_csv(path, index=False)
+        print(f"saved csv at {path}")
+
 
     print("--- Starting Federated Causal Simulation ---")
     print(f"Clients          : {NUM_CLIENTS}")
@@ -54,44 +68,32 @@ def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_
 
     models = {}
 
-    print("\n2. Training Personalized Propensity Model...")
-    global_propensity = PersonalizedPropensityModel(NUM_FEATURES, NUM_CLIENTS)
-    trained_propensity = train_federated_model(
-        global_propensity, train_loaders, epochs=FL_ROUNDS, is_propensity=True, device=device
-    )
-    trained_propensity.eval()
-    trained_propensity = trained_propensity.to(device)
+    idx = 0
 
-    print("\n3. Training Baseline Outcome Model (Standard FedAvg)...")
-    baseline_outcome = GlobalOutcomeModel(NUM_FEATURES)
-    baseline_outcome = train_federated_model(
-        baseline_outcome, train_loaders, epochs=FL_ROUNDS, is_propensity=False, propensity_model_for_iptw=None, device=device, end_lr = 0.005    
-    )    
-    models["FedAvg"] = baseline_outcome
+    for idx in range(2):
+        print("\n2. Training Personalized Propensity Model...")
+        global_propensity = PersonalizedPropensityModel(NUM_FEATURES, NUM_CLIENTS)
+        trained_propensity = train_federated_model(
+            global_propensity, train_loaders, epochs=FL_ROUNDS, is_propensity=True, device=device
+        )
+        trained_propensity.eval()
+        trained_propensity = trained_propensity.to(device)
 
-    print("\n3. Training Baseline Outcome Model (Standard FedAvg)...")
-    baseline_outcome2 = GlobalOutcomeModel(NUM_FEATURES)
-    baseline_outcome2 = train_federated_model(
-        baseline_outcome2, train_loaders, epochs=FL_ROUNDS, is_propensity=False, propensity_model_for_iptw=None, device=device, end_lr = 0.005    
-    )    
-    models["FedAvg2"] = baseline_outcome2
+        print("\n3. Training Baseline Outcome Model (Standard FedAvg)...")
+        baseline_outcome = GlobalOutcomeModel(NUM_FEATURES)
+        baseline_outcome = train_federated_model(
+            baseline_outcome, train_loaders, epochs=FL_ROUNDS, is_propensity=False, propensity_model_for_iptw=None, device=device, 
+        )    
+        add_result(f"FedAvg{idx}", baseline_outcome)
+        
 
-
-    print("\n4. Training FED-IPTW Outcome Model (Weighted FedAvg)...")
-    iptw_outcome = GlobalOutcomeModel(NUM_FEATURES)
-    iptw_outcome = train_federated_model(
-        iptw_outcome, train_loaders, epochs=FL_ROUNDS, is_propensity=False, propensity_model_for_iptw=trained_propensity, device=device,
-        end_lr = 0.005    
-    )
-    models["FED-IPTW"] = iptw_outcome
-    
-    print("\n4. Training FED-IPTW Outcome Model (Weighted FedAvg)...")
-    iptw_outcome2 = GlobalOutcomeModel(NUM_FEATURES)
-    iptw_outcome2 = train_federated_model(
-        iptw_outcome2, train_loaders, epochs=FL_ROUNDS, is_propensity=False, propensity_model_for_iptw=trained_propensity, device=device,
-        end_lr = 0.005    
-    )
-    models["FED-IPTW2"] = iptw_outcome2
+        print("\n4. Training FED-IPTW Outcome Model (Weighted FedAvg)...")
+        iptw_outcome = GlobalOutcomeModel(NUM_FEATURES)
+        iptw_outcome = train_federated_model(
+            iptw_outcome, train_loaders, epochs=FL_ROUNDS, is_propensity=False, propensity_model_for_iptw=trained_propensity, device=device,
+        )
+        add_result(f"FED-IPTW{idx}", iptw_outcome)
+        
 
 
     #print("\n5. Training Glob-FED-IPTW Outcome Model (Weighted FedAvg)...")
@@ -107,18 +109,18 @@ def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_
     print("\n5. Training Tar-FED-IPTW Outcome Model (Weighted FedAvg)...")
     tar_outcome = TarnetOutcomeModel(NUM_FEATURES)
     tar_outcome = train_federated_model(
-        tar_outcome, train_loaders, epochs=FL_ROUNDS, is_propensity=False, device=device, end_lr = 0.005    
+        tar_outcome, train_loaders, epochs=FL_ROUNDS, is_propensity=False, device=device,
     )
-    models["FedAvg-TARNet"] = tar_outcome
+    add_result("FedAvg-TARNet",  tar_outcome)
 
 
     print("\n6. Training Tar-FED-IPTW Outcome Model (Weighted FedAvg)...")
     taripw_outcome = TarnetOutcomeModel(NUM_FEATURES)
     taripw_outcome = train_federated_model(
-        taripw_outcome, train_loaders, epochs=FL_ROUNDS, is_propensity=False, propensity_model_for_iptw=trained_propensity, device=device,
-        end_lr = 0.005    
+        taripw_outcome, train_loaders, epochs=FL_ROUNDS, is_propensity=False, propensity_model_for_iptw=trained_propensity, device=device,        
     )
-    models["FED-IPTW-TARNET"] = taripw_outcome
+    add_result("FED-IPTW-TARNet",  taripw_outcome)
+    
 
     #print("\n7. Training Tar-FED-IPTW Outcome Model (Weighted FedAvg)...")
     #taripwg_outcome = TarnetOutcomeModel(NUM_FEATURES)
@@ -129,20 +131,7 @@ def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_
     #)
     #models["FED-TARNET-IPWG"] = taripwg_outcome
 
-    results = []
-    desc = f"CLIENTS{NUM_CLIENTS}_SAMP{samples_per_client}_FEAT{NUM_FEATURES}_ROUNDS{FL_ROUNDS}_CONF{confounding_level}_SEED{seed}"
 
-    tm = int(time.time())
-    for model_name, omodel in models.items():
-        mean_b, ci_b = run_monte_carlo_evaluation(omodel, dgp_params)
-        results.append(dict(desc=desc, name=model_name, pehe=mean_b, pehe05=ci_b[0], pehe95=ci_b[1]))
-    
-    for x in results:
-        print(x)
-
-    path = os.path.join(out_path, f"{desc}.{tm}.csv")
-    pd.DataFrame(results).to_csv(path, index=False)
-    print(f"saved csv at {path}")
     #NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_level=1, seed=42, out_path="sim"
 
 
