@@ -26,6 +26,7 @@ def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_
                       else "mps" if torch.backends.mps.is_available() 
                       else "cpu")
 
+    
     dgp_params = generate_dgp_parameters(
         num_clients=NUM_CLIENTS, 
         num_features=NUM_FEATURES, 
@@ -33,10 +34,13 @@ def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_
         seed=seed,
     )
 
+    seed = torch.seed()
+
     print("Generating Training Data...")
     train_loaders = generate_federated_data(
         params=dgp_params, 
         samples_per_client=samples_per_client, 
+        batch_size=128,
         seed=seed # Train Seed
     )
 
