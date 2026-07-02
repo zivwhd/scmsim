@@ -152,13 +152,22 @@ class TarnetOutcomeModel(nn.Module):
 # ==========================================
 
 
-def train_federated_model(global_model, dataloaders, epochs, 
+def train_federated_model_old(global_model, dataloaders, epochs, 
                           is_propensity=False, propensity_model_for_iptw=None,
-                          glob_adjusted=False, device='cpu', start_lr = 0.1, end_lr = 0.01):
+                          glob_adjusted=False, device='cpu', start_lr = 0.05, end_lr = 0.005):
     optimizer_lr = 0.01
     
     
     global_model = global_model.to(device)
+
+
+    ####
+    global_E_T = 0.5 
+    if propensity_model_for_iptw is not None:
+        total_T = sum(batch[1].sum().item() for loader in dataloaders for batch in loader)
+        total_samples = sum(batch[1].size(0) for loader in dataloaders for batch in loader)
+        global_E_T = total_T / total_samples
+    ####
 
     if glob_adjusted:
         with torch.no_grad():
@@ -228,14 +237,14 @@ def train_federated_model(global_model, dataloaders, epochs,
                                 
                                 # 2. Hospital-Specific Global Decorrelation Weight (w_c)
                                 # Get propensity for the 'average' patient at this hospital
-                                x_bar = x.mean(dim=0, keepdim=True)
-                                ps_bar = propensity_model_for_iptw(x_bar, cid).squeeze()
-                                ps_bar = torch.clamp(ps_bar, 0.25, 0.75)
-                                w_c = p_T / ps_bar
+                                #x_bar = x.mean(dim=0, keepdim=True)
+                                #ps_bar = propensity_model_for_iptw(x_bar, cid).squeeze()
+                                #ps_bar = torch.clamp(ps_bar, 0.25, 0.75)
+                                #w_c = p_T / ps_bar
                                 
                                 # Combine: Augment patient weights with global hospital adjustment
-                                final_weights = w_ci * w_c
-                                final_weights = torch.clamp(final_weights, 0.1, 10.0)
+                                #final_weights = w_ci #* w_c
+                                final_weights = torch.clamp(w_ci, 0.1, 10.0)
                         
                         base_losses = nn.MSELoss(reduction='none')(predictions, y_factual)
                         loss = (base_losses * final_weights).mean()
@@ -256,6 +265,134 @@ def train_federated_model(global_model, dataloaders, epochs,
         
     return global_model
 
+
+
+import copy
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+def train_federated_model(global_model, dataloaders, epochs, is_propensity=False, propensity_model_for_iptw=None,
+                          glob_adjusted=False, device='cpu', start_lr = 0.1, end_lr = 0.01):
+    optimizer_lr = 0.01
+    num_clients = len(dataloaders)
+    
+    global_model = global_model.to(device)
+    # ==========================================
+    # 1. PRE-COMPUTATION & INITIALIZATION
+    # Calculate aggregation weights exactly once
+    # ==========================================
+    client_agg_weights = []
+    
+    if propensity_model_for_iptw is not None and not is_propensity:
+        # FED-IPTW: Pre-calculate N_c, E[T], X_bar_c, and w_c
+        total_T = 0.0
+        total_N = 0
+        client_N = []
+        client_X_bars = []
+        
+        # First pass over data to gather static stats
+        for dataloader in dataloaders:
+            c_T = 0.0
+            c_N = 0
+            c_X_sum = 0.0
+            for batch in dataloader:
+                x, t, _, _, _, _prop = [x.to(device) for x in batch]
+                c_T += t.sum().item()
+                c_N += t.size(0)
+                c_X_sum += x.sum(dim=0)
+                
+            total_T += c_T
+            total_N += c_N
+            client_N.append(c_N)
+            client_X_bars.append(c_X_sum / c_N) # The average patient X_c
+            
+        global_E_T = total_T / total_N
+        
+        # Calculate the final aggregation weights (n_c * w_c)
+        for cid in range(num_clients):
+            x_bar = client_X_bars[cid].unsqueeze(0) # Shape [1, num_features]
+            cid_tensor = torch.full((1, 1), cid, dtype=torch.long)
+            
+            with torch.no_grad():
+                e_x_bar = propensity_model_for_iptw(x_bar, cid_tensor).squeeze()
+                e_x_bar = torch.clamp(e_x_bar, 0.05, 0.95).item()
+                
+            w_c = global_E_T / e_x_bar
+            client_agg_weights.append(client_N[cid] * w_c)
+            
+    else:
+        # STANDARD FedAvg: Weight purely by sample size (n_c)
+        for dataloader in dataloaders:
+            c_N = sum(batch[1].size(0) for batch in dataloader)
+            client_agg_weights.append(c_N)
+            
+    # Normalize the aggregation weights so they sum to 1.0
+    total_weight = sum(client_agg_weights)
+    client_agg_weights = [w / total_weight for w in client_agg_weights]
+
+    # ==========================================
+    # 2. FEDERATED TRAINING LOOP
+    # ==========================================
+    loss_track = {}
+    for round_num in range(epochs):
+        client_weights = []
+        
+        for client_id, dataloader in enumerate(dataloaders):
+            local_model = copy.deepcopy(global_model)
+            local_model.train()
+            decay_factor = 100*round_num / max(1, epochs - 1) 
+            #optimizer_lr = start_lr - (start_lr - end_lr) * decay_factor    
+            optimizer_lr = start_lr * (0.99 ** (decay_factor))
+            optimizer = optim.Adam(local_model.parameters(), lr=optimizer_lr)
+            
+            for batch in dataloader:
+                x, t, y_factual, _, cid, _prop = [x.to(device) for x in batch]
+                optimizer.zero_grad()
+                
+                if is_propensity:
+                    predictions = local_model(x, cid)
+                    loss = nn.BCELoss()(predictions, t)
+                else:
+                    predictions = local_model(x, t)
+                    
+                    if propensity_model_for_iptw is not None:
+                        # IPTW Outcome Training (Local Decorrelation Only)
+                        with torch.no_grad():
+                            ps = propensity_model_for_iptw(x, cid)
+                            ps = torch.clamp(ps, 0.05, 0.95)
+                            p_T = t.mean()
+                            w_ci = t * (p_T / ps) + (1 - t) * ((1 - p_T) / (1 - ps))
+                            w_ci = torch.clamp(w_ci, 0.1, 10.0)
+                        
+                        base_losses = nn.MSELoss(reduction='none')(predictions, y_factual)
+                        loss = (base_losses * w_ci).mean()
+                    else:
+                        # Baseline Outcome Training
+                        loss = nn.MSELoss()(predictions, y_factual)
+                
+                loss.backward()
+                optimizer.step()
+                loss_track[client_id] = float(loss.cpu().detach())
+                
+            client_weights.append(local_model.state_dict())
+            
+        # ==========================================
+        # 3. SERVER AGGREGATION
+        # ==========================================
+        print("### epoch: ", round_num, loss_track)
+        global_dict = global_model.state_dict()
+        for key in global_dict.keys():
+            if 'local_heads' in key: 
+                continue 
+            
+            # Fast, static weighted average using our normalized pre-computed weights
+            weighted_sum = sum(client_weights[i][key] * client_agg_weights[i] for i in range(num_clients))
+            global_dict[key] = weighted_sum
+            
+        global_model.load_state_dict(global_dict)
+        
+    return global_model
 
 # ==========================================
 # 4. Benchmarking (PEHE Score)
