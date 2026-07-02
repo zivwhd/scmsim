@@ -70,14 +70,15 @@ def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_
 
     idx = 0
 
+    print("\n2. Training Personalized Propensity Model...")
+    global_propensity = PersonalizedPropensityModel(NUM_FEATURES, NUM_CLIENTS)
+    trained_propensity = train_federated_model(
+        global_propensity, train_loaders, epochs=FL_ROUNDS*3, is_propensity=True, device=device
+    )
+    trained_propensity.eval()
+    trained_propensity = trained_propensity.to(device)
+
     for idx in range(2):
-        print("\n2. Training Personalized Propensity Model...")
-        global_propensity = PersonalizedPropensityModel(NUM_FEATURES, NUM_CLIENTS)
-        trained_propensity = train_federated_model(
-            global_propensity, train_loaders, epochs=FL_ROUNDS, is_propensity=True, device=device
-        )
-        trained_propensity.eval()
-        trained_propensity = trained_propensity.to(device)
 
         print("\n3. Training Baseline Outcome Model (Standard FedAvg)...")
         baseline_outcome = GlobalOutcomeModel(NUM_FEATURES)
