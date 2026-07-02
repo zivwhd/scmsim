@@ -273,7 +273,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 def train_federated_model(global_model, dataloaders, epochs, is_propensity=False, propensity_model_for_iptw=None,
-                          glob_adjusted=False, device='cpu', start_lr = 0.1, end_lr = 0.01):
+                          glob_adjusted=False, device='cpu', start_lr = 0.05, end_lr = 0.005):
     optimizer_lr = 0.01
     num_clients = len(dataloaders)
     
@@ -341,9 +341,9 @@ def train_federated_model(global_model, dataloaders, epochs, is_propensity=False
         for client_id, dataloader in enumerate(dataloaders):
             local_model = copy.deepcopy(global_model)
             local_model.train()
-            decay_factor = 100*round_num / max(1, epochs - 1) 
-            #optimizer_lr = start_lr - (start_lr - end_lr) * decay_factor    
-            optimizer_lr = start_lr * (0.99 ** (decay_factor))
+            decay_factor = round_num / max(1, epochs - 1) 
+            optimizer_lr = start_lr - (start_lr - end_lr) * decay_factor    
+            #optimizer_lr = start_lr * (0.99 ** (decay_factor))
             optimizer = optim.Adam(local_model.parameters(), lr=optimizer_lr)
             
             for batch in dataloader:

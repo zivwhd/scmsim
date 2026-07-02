@@ -37,7 +37,7 @@ def experiment(NUM_CLIENTS = 3, NUM_FEATURES = 10, FL_ROUNDS = 300, confounding_
     train_loaders = generate_federated_data(
         params=dgp_params, 
         samples_per_client=samples_per_client, 
-        seed=44 # Train Seed
+        seed=seed # Train Seed
     )
 
     print("Generating Testing Data...")
